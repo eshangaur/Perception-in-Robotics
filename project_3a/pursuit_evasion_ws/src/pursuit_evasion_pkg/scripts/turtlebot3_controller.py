@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+
+# this code is adapted from https://github.com/ROBOTIS-GIT/turtlebot3/blob/master/turtlebot3_example/nodes/turtlebot3_pointop_key
+# I was able to find the source code thanks to this thread https://answers.ros.org/question/154876/no-source-code-cpp-file-for-turtlebot/
+
 import rospy
 from geometry_msgs.msg import Twist, Point, Quaternion
 import tf
@@ -5,16 +10,6 @@ from math import radians, copysign, sqrt, pow, pi, atan2
 from tf.transformations import euler_from_quaternion
 import numpy as np
 
-msg = """
-control your Turtlebot3!
------------------------
-Insert xyz - coordinate.
-x : position x (m)
-y : position y (m)
-z : orientation z (degree: -180 ~ 180)
-If you want to close, insert 's'
------------------------
-"""
 
 
 class turtlebot3_controller():
@@ -39,7 +34,7 @@ class turtlebot3_controller():
                 rospy.signal_shutdown("tf Exception")
     
     
-    def goToPoint(self,goal_x,goal_y,goal_z, linear_speed=2):
+    def goToPoint(self,goal_x,goal_y,goal_z, linear_speed=1):
         (position, rotation) = self.get_odom()
         last_rotation = 0
         angular_speed = 1
@@ -72,10 +67,15 @@ class turtlebot3_controller():
             move_cmd.angular.z = angular_speed * path_angle-rotation
 
             distance = sqrt(pow((goal_x - x_start), 2) + pow((goal_y - y_start), 2))
-            move_cmd.linear.x = min(linear_speed * distance, 0.1)
+
+            # move faster if we are farther away from the goal
+            if(distance < 0.2):
+                move_cmd.linear.x = 0.2
+            else:
+                move_cmd.linear.x = 0.4
 
             if move_cmd.angular.z > 0:
-                move_cmd.angular.z = min(move_cmd.angular.z, 1.5)
+                move_cmd.angular.z = min(move_cmd.angular.z, 1.5)   
             else:
                 move_cmd.angular.z = max(move_cmd.angular.z, -1.5)
 

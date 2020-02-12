@@ -26,5 +26,6 @@ View a camera node
 
 
 ## How to test our traversal
+`rosrun pursuit_evasion_pkg apartment.launch`
 `rosrun pursuit_evasion_pkg traverse_floor.py`
 `rosservice call /gazebo/reset_world`
