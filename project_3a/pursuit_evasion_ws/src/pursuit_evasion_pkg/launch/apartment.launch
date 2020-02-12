@@ -3,7 +3,7 @@
   <!-- Define some arguments to spawn our turtlebot3 into the world -->
   <arg name="model" default="burger" doc="model type [burger, waffle, waffle_pi]"/>
   <arg name="x_pos" default="-6.0"/>
-  <arg name="y_pos" default="0.0"/>
+  <arg name="y_pos" default="-2.0"/>
   <arg name="z_pos" default="0.0"/>
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
@@ -16,7 +16,7 @@
 
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-urdf -model turtlebot3 -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description" />
   <!-- <node pkg="turtlebot3_example" type="turtlebot3_pointop_key" name="turtlebot3_pointop_keyboard"  output="screen"/> -->
-  <node pkg="pursuit_evasion_pkg" type="traverse_floor.py" name="traverse_floor_node"/>
+  <!-- <node pkg="pursuit_evasion_pkg" type="traverse_floor.py" name="traverse_floor_node"/> -->
 
   
 </launch>

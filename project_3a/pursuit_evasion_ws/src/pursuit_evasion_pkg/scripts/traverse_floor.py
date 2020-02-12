@@ -15,10 +15,9 @@ from turtlebot3_controller import turtlebot3_controller
 
 def moveAround(controller):
 
-    # controller.goToPoint(0,-1,0)  # gets stuck on something
-    controller.goToPoint(0,0,0)     # gets to the point
+    controller.goToPoint(0,-2)     # gets to the point
+    controller.goToPoint(-1.6,-2.6)   # success!
 
-    controller.goToPoint(-1.6,-2.6,0)   # gets stuck on something -_-
 
 
 if __name__ == '__main__':

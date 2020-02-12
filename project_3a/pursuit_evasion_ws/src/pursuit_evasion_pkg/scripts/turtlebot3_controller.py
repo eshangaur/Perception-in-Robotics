@@ -34,7 +34,7 @@ class turtlebot3_controller():
                 rospy.signal_shutdown("tf Exception")
     
     
-    def goToPoint(self,goal_x,goal_y,goal_z, linear_speed=1):
+    def goToPoint(self,goal_x,goal_y,goal_z=None, linear_speed=1):
         (position, rotation) = self.get_odom()
         last_rotation = 0
         angular_speed = 1
@@ -84,25 +84,26 @@ class turtlebot3_controller():
             self.rate.sleep()
         (position, rotation) = self.get_odom()
 
-        # rotate to the "goal_z" degrees
-        while abs(rotation - goal_z) > 0.05:
-            (position, rotation) = self.get_odom()
-            if goal_z >= 0:
-                if rotation <= goal_z and rotation >= goal_z - pi:
-                    move_cmd.linear.x = 0.00
-                    move_cmd.angular.z = 0.5
+        # rotate to the "goal_z" degrees IF requested
+        if(goal_z):
+            while abs(rotation - goal_z) > 0.05:
+                (position, rotation) = self.get_odom()
+                if goal_z >= 0:
+                    if rotation <= goal_z and rotation >= goal_z - pi:
+                        move_cmd.linear.x = 0.00
+                        move_cmd.angular.z = 0.5
+                    else:
+                        move_cmd.linear.x = 0.00
+                        move_cmd.angular.z = -0.5
                 else:
-                    move_cmd.linear.x = 0.00
-                    move_cmd.angular.z = -0.5
-            else:
-                if rotation <= goal_z + pi and rotation > goal_z:
-                    move_cmd.linear.x = 0.00
-                    move_cmd.angular.z = -0.5
-                else:
-                    move_cmd.linear.x = 0.00
-                    move_cmd.angular.z = 0.5
-            self.cmd_vel.publish(move_cmd)
-            self.rate.sleep()
+                    if rotation <= goal_z + pi and rotation > goal_z:
+                        move_cmd.linear.x = 0.00
+                        move_cmd.angular.z = -0.5
+                    else:
+                        move_cmd.linear.x = 0.00
+                        move_cmd.angular.z = 0.5
+                self.cmd_vel.publish(move_cmd)
+                self.rate.sleep()
 
 
         rospy.loginfo("Stopping the robot...")
