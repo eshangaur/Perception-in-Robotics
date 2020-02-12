@@ -69,7 +69,7 @@ class turtlebot3_controller():
             distance = sqrt(pow((goal_x - x_start), 2) + pow((goal_y - y_start), 2))
 
             # move faster if we are farther away from the goal
-            if(distance < 0.2):
+            if(distance < 0.3):
                 move_cmd.linear.x = 0.2
             else:
                 move_cmd.linear.x = 0.4
@@ -85,7 +85,7 @@ class turtlebot3_controller():
         (position, rotation) = self.get_odom()
 
         # rotate to the "goal_z" degrees IF requested
-        if(goal_z):
+        if(True):
             while abs(rotation - goal_z) > 0.05:
                 (position, rotation) = self.get_odom()
                 if goal_z >= 0:
@@ -108,6 +108,7 @@ class turtlebot3_controller():
 
         rospy.loginfo("Stopping the robot...")
         self.cmd_vel.publish(Twist())
+        self.rate.sleep()
 
 
     def get_odom(self):
