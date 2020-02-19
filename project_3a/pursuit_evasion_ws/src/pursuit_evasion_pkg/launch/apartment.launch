@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   <!-- Define some arguments to spawn our turtlebot3 into the world -->
-  <arg name="model" default="burger" doc="model type [burger, waffle, waffle_pi]"/>
+  <arg name="model" default="waffle" doc="model type [burger, waffle, waffle_pi]"/>
   <arg name="x_pos" default="-6.0"/>
   <arg name="y_pos" default="-2.0"/>
   <arg name="z_pos" default="0.0"/>
