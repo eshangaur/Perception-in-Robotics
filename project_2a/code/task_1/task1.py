@@ -1,5 +1,7 @@
 #!usr/bin/python
 
+# This file uses python 3.7.4 and OpenCV
+
 import cv2
 import glob
 
