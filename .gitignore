@@ -1,7 +1,7 @@
 .vscode
 *.code-workspace
 
-.ipynb_checkpoints
+**/.ipynb_checkpoints
 
 project_3a/pursuit_evasion_ws/build/.built_by
 project_3a/pursuit_evasion_ws/build/CATKIN_IGNORE
