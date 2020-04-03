@@ -1,0 +1,5 @@
+# >>> ignore ROS catkin_make folders >>>
+/3b_ws/build/
+/3b_ws/devel/
+/3b_ws/.catkin_workspace
+# <<<<<<
