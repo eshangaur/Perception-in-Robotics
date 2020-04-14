@@ -3,3 +3,5 @@
 /3b_ws/devel/
 /3b_ws/.catkin_workspace
 # <<<<<<
+
+/3b_ws/src/pursuit_evasion/src/models
