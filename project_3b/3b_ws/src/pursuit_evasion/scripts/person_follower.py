@@ -24,7 +24,11 @@ import sys
 import rospy
 import cv2
 from std_msgs.msg import String
+import message_filters
 from sensor_msgs.msg import Image
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PoseStamped
+
 from cv_bridge import CvBridge, CvBridgeError
 
 MODELS_PATH = '/home/ch/Documents/GitHub/CSE598-Perception-In-Robotics/project_3b/3b_ws/src/pursuit_evasion/src/models'
@@ -49,14 +53,18 @@ class person_follower:
 	def __init__(self):
 		print('ROS_OpenCV_bridge initialized')
 		self.image_pub = rospy.Publisher("CV_image", Image, queue_size=5)
-
+		self.goal_pub = rospy.Publisher("/tb3_0/move_base_simple/goal", PoseStamped, queue_size=5)
 		self.bridge = CvBridge()
+		self.goalMsg = PoseStamped()
+		self.goalMsg.header.frame_id = 'map'
+		self.goalMsg.pose.orientation.x = 0.0
+		self.goalMsg.pose.orientation.y = 0.0
+
 
 		# >>> TF stuff >>>
 		model = tf.saved_model.load(os.path.join(MODELS_PATH, 'ssd_mobilenet_v2_coco_2018_03_29/saved_model/'))
-		print('\n\n\n',model.signatures, '\n\n\n')
 		self.detection_model = model.signatures['serving_default']
-		print('\n\n\n',self.detection_model.inputs,'\n\n\n')
+		print('Vision Model Loaded')
 
 		# >>> Patches >>>
 		# patch tf1 into `utils.ops`
@@ -70,8 +78,14 @@ class person_follower:
 		PATH_TO_LABELS = os.path.join(MODELS_PATH, 'research/object_detection/data/mscoco_label_map.pbtxt')
 		self.category_index = label_map_util.create_category_index_from_labelmap(PATH_TO_LABELS, use_display_name=True)
 
-		self.image_sub = rospy.Subscriber(
-			"/tb3_0/camera/rgb/image_raw", Image, self.callback)
+
+		image_sub = message_filters.Subscriber("/tb3_0/camera/rgb/image_raw", Image)
+		odom_sub = message_filters.Subscriber("/tb3_0/odom", Odometry)
+		ts = message_filters.TimeSynchronizer([image_sub, odom_sub], 10)
+		ts.registerCallback(self.callback)
+
+		print("Subscribed to image_raw and odometry for tb3_0")
+
 
 	'''
 		This methdod performs these steps:
@@ -79,29 +93,43 @@ class person_follower:
 		2. runs an object detection inference on the image
 		3. Draws the inference on the image
 		4. publishes the drawn inference
+		5. Follows the human
 	'''
-
-	def callback(self, ros_image):
+	def callback(self, ros_image, odom):
+		print('!callback initiated')
 		try:
 			cv_image = self.bridge.imgmsg_to_cv2(ros_image, "bgr8")
 		except CvBridgeError as e:
 			print(e)
-
+		print('!bridged the image')
 		# print(type(cv_image))     # <type 'numpy.ndarray'>
 		# (rows, cols, channels) = cv_image.shape
 
 		output_dict = self.run_inference_for_single_image(cv_image)
+		print('!ran inference')
 		self.draw_output(cv_image, output_dict)
-
-		cv2.imshow("Image window", cv_image)
-		cv2.waitKey(3)
+		print('!drew output')
+		# cv2.imshow("Image window", cv_image)
+		# cv2.waitKey(3)
 
 		try:
 			self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
 		except CvBridgeError as e:
 			print(e)
 
+		# >>> Follow the person >>>
+		self.follow_person(output_dict, odom)
 
+
+	'''
+		returns a dictionary containing the bounding boxes of detected objects in normalized coordinates.
+		{
+			u'detection_classes': array([1]), 
+			u'detection_boxes': array([[3.0305982e-04, 3.1669766e-01, 6.3187075e-01, 6.9868499e-01]], dtype=float32), 
+			u'detection_scores': array([0.96191406], dtype=float32), 
+			'num_detections': 1
+		}
+	'''
 	def run_inference_for_single_image(self, image):
 		image = np.asarray(image)
 		# The input needs to be a tensor, convert it using `tf.convert_to_tensor`.
@@ -152,15 +180,94 @@ class person_follower:
 			use_normalized_coordinates=True,
 			line_thickness=8)
 
+	
+	def follow_person(self, output_dict, odom):
+		def quaternion_to_euler(w, x, y, z):
+			"""Converts quaternions with components w, x, y, z into yaw"""
+			siny_cosp = 2 * (w * z + x * y)
+			cosy_cosp = 1 - 2 * (y**2 + z**2)
+			yaw = np.arctan2(siny_cosp, cosy_cosp)
+
+			return yaw
+
+		def euler_to_quaternion(roll, pitch, yaw):
+			qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+			qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+			qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+			qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+
+			return [qz, qw]
+
+		def rotate_about_origin(x, y, radians):
+			"""Use numpy to build a rotation matrix and take the dot product."""
+			c, s = np.cos(radians), np.sin(radians)
+			j = np.matrix([[c, s], [-s, c]])
+			m = np.dot(j, [x, y]).T
+
+			return float(m[0]), float(m[1])
+
+
+		if (output_dict['detection_classes'] and output_dict['detection_scores'][0] > 0.4):	# if there is at least one object detected
+			if (output_dict['detection_classes'][0] == 1):		# if we detected a person
+				current_pose = odom.pose.pose
+				# print(type(current_pose))	# <class 'geometry_msgs.msg._Pose.Pose'>
+				'''
+					example pose:
+						position: 
+							x: -1.39513861814
+							y: 0.0465066754963
+							z: -0.000999279961604
+						orientation: 
+							x: -0.000105780083959
+							y: 0.00156236909555
+							z: 0.0693314314582
+							w: 0.997592452069
+				'''
+				current_yaw = quaternion_to_euler(current_pose.orientation.w, current_pose.orientation.x, current_pose.orientation.y, current_pose.orientation.z)
+
+				box = output_dict['detection_boxes'][0]
+				box_center = (box[1] + box[3])/2.0
+
+				# 0.872 radians is 50 degrees
+				new_yaw = 0.872 * (box_center - 0.5)	# subtract 0.5 so that it is a value between -0.5 and 0.5
+				new_yaw = new_yaw + current_yaw
+
+				# >>> convert back to quaternion >>>
+				self.goalMsg.pose.orientation.z, self.goalMsg.pose.orientation.w = euler_to_quaternion(0,0,new_yaw)
+
+				# >>> calculate new x,y coordinates to move to >>>
+				x, y = rotate_about_origin(0.5, 0, new_yaw)
+
+				self.goalMsg.pose.position.x = current_pose.position.x + x
+				self.goalMsg.pose.position.y = current_pose.position.y + y
+
+				debug = True
+				if(debug):
+					print('current_yaw: ', current_yaw)
+					print('box_center: ', box_center)
+					print('new_yaw: ', new_yaw)
+					# print('quat: ', quat)
+					print('current x, y: {:.2f}, {:.2f}'.format(current_pose.position.x, current_pose.position.y))
+					# print('new x,y: {:.2f}, {:.2f}'.format(new_x, new_y))
+				
+				# >>> publish our new goal location >>>
+				# /tb3_0/move_base_simple/goal
+				self.goalMsg.header.stamp = rospy.Time.now()
+				self.goal_pub.publish(self.goalMsg)
+
+				
+				
+
+
 
 def main(args):
-	rospy.init_node('ROS_img_to_CV', anonymous=False)  # we only need one of these nodes so make anonymous=False
-	ic = image_converter()
+	rospy.init_node('person_follower', anonymous=False)  # we only need one of these nodes so make anonymous=False
+	pf = person_follower()
 	try:
 		rospy.spin()
 	except KeyboardInterrupt:
 		print("Shutting down")
-	# cv2.destroyAllWindows()
+	cv2.destroyAllWindows()
 
 if __name__ == '__main__':
 	main(sys.argv)
