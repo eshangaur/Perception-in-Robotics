@@ -170,26 +170,11 @@ class person_follower:
 
 	
 	def follow_person(self, output_dict):
-		def quaternion_to_euler(w, x, y, z):
-			"""Converts quaternions with components w, x, y, z into yaw"""
-			siny_cosp = 2 * (w * z + x * y)
-			cosy_cosp = 1 - 2 * (y**2 + z**2)
-			yaw = np.arctan2(siny_cosp, cosy_cosp)
+		'''
+			only publish when we find a person
+		'''
+		move_cmd = Twist()		# all values are 0.0 by default
 
-			return yaw
-
-		def euler_to_quaternion(roll, pitch, yaw):
-			qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-			qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
-			qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
-			qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-
-			return [qz, qw]
-
-
-		# stop the bot by default (all values are 0.0)
-		move_cmd = Twist()
-		
 		index = -1
 		for i in range(len(output_dict['detection_classes'])):
 			if (output_dict['detection_classes'][i] == 1 and output_dict['detection_scores'][i] > 0.4):		# if we detected a person
@@ -201,8 +186,8 @@ class person_follower:
 			box_center = (box[1] + box[3])/2.0
 
 			# 0.872 radians is 50 degrees
-			move_cmd.angular.z = 0.872 * (box_center - 0.5)	# subtract 0.5 so that it is a value between -0.5 and 0.5
-			move_cmd.linear.x = 0.19
+			move_cmd.angular.z = -1.01 * (box_center - 0.5)	# subtract 0.5 so that it is a value between -0.5 and 0.5
+			move_cmd.linear.x = 0.21
 
 			debug = False
 			debug = True
@@ -210,8 +195,8 @@ class person_follower:
 				print('box_center: ', box_center)
 				print('angular.z: {:.2f}'.format(move_cmd.angular.z))
 					
-		# >>> publish the movement speeds >>>
-		self.cmd_vel_pub.publish(move_cmd)
+			# >>> publish the movement speeds >>>
+			self.cmd_vel_pub.publish(move_cmd)
 
 				
 
