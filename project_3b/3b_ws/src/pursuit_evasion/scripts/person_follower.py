@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 '''
-	This file contains a class for converting ROS images to
-	OpenCV images. It was retrieved from
+	This file contains a ROS node that will follow a person in
+	a gazebo environment. Some code was retrieved from
 	http://wiki.ros.org/cv_bridge/Tutorials/ConvertingBetweenROSImagesAndOpenCVImagesPython
 	on April 6th 2020.
+
+	This node also uses code from object_detection_tutorial.ipynb.
 
 
 	How to run this file:
@@ -12,6 +14,7 @@
 	2. source devel/setup.bash
 	3. roslaunch pursuit_evasion robot_amcl.launch map_file:=/home/ch/Documents/GitHub/CSE598-Perception-In-Robotics/project_3b/3b_ws/src/pursuit_evasion/maps/task1map.yaml
 	4. rosrun pursuit_evasion person_follower.py
+	5. roslaunch pursuit_evasion move_evader.launch world_index:=0
 '''
 
 
@@ -186,7 +189,7 @@ class person_follower:
 			box_center = (box[1] + box[3])/2.0
 
 			# 0.872 radians is 50 degrees
-			move_cmd.angular.z = -1.01 * (box_center - 0.5)	# subtract 0.5 so that it is a value between -0.5 and 0.5
+			move_cmd.angular.z = -1.1 * (box_center - 0.5)	# subtract 0.5 so that it is a value between -0.5 and 0.5
 			move_cmd.linear.x = 0.21
 
 			debug = False
