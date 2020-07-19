@@ -4,7 +4,7 @@
 
 - My Initials in ROS
 
-    It involved making a turtlesim to write my initials, i.e., E.G., in ROS.
+    It involved making a turtlesim to write my initials, EG., using ROS.
     
 - Camera Model and Stereo Depth Sensing
     
